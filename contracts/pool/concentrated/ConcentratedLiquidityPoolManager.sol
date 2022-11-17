@@ -70,9 +70,9 @@ contract ConcentratedLiquidityPoolManager is IConcentratedLiquidityPoolManagerSt
 
         require(liquidityMinted >= minLiquidity, "TOO_LITTLE_RECEIVED");
 
-        (uint256 feeGrowthInside0, uint256 feeGrowthInside1) = pool.rangeFeeGrowth(lower, upper);
-
         if (positionId == 0) {
+            (uint256 feeGrowthInside0, uint256 feeGrowthInside1) = pool.rangeFeeGrowth(lower, upper);
+
             // We mint a new NFT.
             _positionId = nftCount.minted;
             positions[_positionId] = Position({
@@ -82,19 +82,27 @@ contract ConcentratedLiquidityPoolManager is IConcentratedLiquidityPoolManagerSt
                 upper: upper,
                 latestAddition: uint32(block.timestamp),
                 feeGrowthInside0: feeGrowthInside0,
-                feeGrowthInside1: feeGrowthInside1
+                feeGrowthInside1: feeGrowthInside1,
+                unclaimedFees0: 0,
+                unclaimedFees1: 0
             });
             mint(msg.sender);
         } else {
+            PositionFeesData memory positionFeesData = positionFees(_positionId);
+
             // We increase liquidity for an existing NFT.
             _positionId = positionId;
             Position storage position = positions[_positionId];
             require(address(position.pool) == address(pool), "POOL_MIS_MATCH");
             require(position.lower == lower && position.upper == upper, "RANGE_MIS_MATCH");
             require(ownerOf(positionId) == msg.sender, "NOT_ID_OWNER");
-            // Fees should be claimed first.
-            position.feeGrowthInside0 = feeGrowthInside0;
-            position.feeGrowthInside1 = feeGrowthInside1;
+
+            position.feeGrowthInside0 = positionFeesData.feeGrowthInside0;
+            position.feeGrowthInside1 = positionFeesData.feeGrowthInside1;
+
+            position.unclaimedFees0 += positionFeesData.token0amount;
+            position.unclaimedFees1 += positionFeesData.token1amount;
+
             position.liquidity += liquidityMinted;
             // Incentives should be claimed first.
             position.latestAddition = uint32(block.timestamp);
@@ -139,17 +147,30 @@ contract ConcentratedLiquidityPoolManager is IConcentratedLiquidityPoolManagerSt
 
         require(position.liquidity != 0, "NO_LIQUIDITY");
 
-        (uint256 token0Fees, uint256 token1Fees, uint256 feeGrowthInside0, uint256 feeGrowthInside1) = positionFees(tokenId);
+        PositionFeesData memory positionFeesData = positionFees(tokenId);
+
+        uint256 feeGrowthInside0 = positionFeesData.feeGrowthInside0;
+        uint256 feeGrowthInside1 = positionFeesData.feeGrowthInside1;
 
         if (amount < position.liquidity) {
             (token0Amount, token1Amount, , ) = position.pool.burn(position.lower, position.upper, amount);
 
-            positions[tokenId].feeGrowthInside0 = feeGrowthInside0;
-            positions[tokenId].feeGrowthInside1 = feeGrowthInside1;
+            positions[tokenId].feeGrowthInside0 = positionFeesData.feeGrowthInside0;
+            positions[tokenId].feeGrowthInside1 = positionFeesData.feeGrowthInside1;
             positions[tokenId].liquidity -= amount;
+
+            token0Amount += position.unclaimedFees0;
+            token1Amount += position.unclaimedFees1;
+
+            position.unclaimedFees0 = 0;
+            position.unclaimedFees1 = 0;
         } else {
             amount = position.liquidity;
             (token0Amount, token1Amount, , ) = position.pool.burn(position.lower, position.upper, amount);
+
+            token0Amount += position.unclaimedFees0;
+            token1Amount += position.unclaimedFees1;
+
             burn(tokenId);
             delete positions[tokenId];
         }
@@ -157,8 +178,8 @@ contract ConcentratedLiquidityPoolManager is IConcentratedLiquidityPoolManagerSt
         require(token0Amount >= minimumOut0 && token1Amount >= minimumOut1, "TOO_LITTLE_RECEIVED");
 
         unchecked {
-            token0Amount += token0Fees;
-            token1Amount += token1Fees;
+            token0Amount += positionFeesData.token0amount;
+            token1Amount += positionFeesData.token1amount;
         }
 
         _transferBoth(position.pool, recipient, token0Amount, token1Amount, unwrapBento);
@@ -176,7 +197,16 @@ contract ConcentratedLiquidityPoolManager is IConcentratedLiquidityPoolManagerSt
 
         (, , , , , , address token0, address token1) = position.pool.getImmutables();
 
-        (token0amount, token1amount, position.feeGrowthInside0, position.feeGrowthInside1) = positionFees(tokenId);
+        PositionFeesData memory positionFeesData = positionFees(tokenId);
+
+        token0amount = positionFeesData.token0amount + position.unclaimedFees0;
+        token1amount = positionFeesData.token1amount + position.unclaimedFees1;
+
+        position.unclaimedFees0 = 0;
+        position.unclaimedFees1 = 0;
+
+        position.feeGrowthInside0 = positionFeesData.feeGrowthInside0;
+        position.feeGrowthInside1 = positionFeesData.feeGrowthInside1;
 
         uint256 balance0 = bento.balanceOf(token0, address(this));
         uint256 balance1 = bento.balanceOf(token1, address(this));
@@ -196,32 +226,38 @@ contract ConcentratedLiquidityPoolManager is IConcentratedLiquidityPoolManagerSt
         _transferOut(token1, recipient, token1amount, unwrapBento);
     }
 
+    struct PositionFeesData {
+        uint256 token0amount;
+        uint256 token1amount;
+        uint256 feeGrowthInside0;
+        uint256 feeGrowthInside1;
+    }
+
     /// @notice Returns the claimable fees and the fee growth accumulators of a given position.
-    function positionFees(uint256 tokenId)
-        public
-        view
-        returns (
-            uint256 token0amount,
-            uint256 token1amount,
-            uint256 feeGrowthInside0,
-            uint256 feeGrowthInside1
-        )
-    {
+    function positionFees(uint256 tokenId) public view returns (PositionFeesData memory) {
         Position memory position = positions[tokenId];
 
-        (feeGrowthInside0, feeGrowthInside1) = position.pool.rangeFeeGrowth(position.lower, position.upper);
+        (uint256 feeGrowthInside0, uint256 feeGrowthInside1) = position.pool.rangeFeeGrowth(position.lower, position.upper);
 
-        token0amount = FullMath.mulDiv(
+        uint256 token0amount = FullMath.mulDiv(
             feeGrowthInside0 - position.feeGrowthInside0,
             position.liquidity,
             0x100000000000000000000000000000000
         );
 
-        token1amount = FullMath.mulDiv(
+        uint256 token1amount = FullMath.mulDiv(
             feeGrowthInside1 - position.feeGrowthInside1,
             position.liquidity,
             0x100000000000000000000000000000000
         );
+
+        return
+            PositionFeesData({
+                token0amount: token0amount,
+                token1amount: token1amount,
+                feeGrowthInside0: feeGrowthInside0,
+                feeGrowthInside1: feeGrowthInside1
+            });
     }
 
     function _transferBoth(

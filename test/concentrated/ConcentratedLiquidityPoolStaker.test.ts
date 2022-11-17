@@ -38,8 +38,8 @@ describe("Concentrated Liquidity Pool Staker", function () {
     _snapshotId = await ethers.provider.send("evm_snapshot", []);
   });
 
-  describe("Invalid actions", async () => {
-    it("rewards exceeds unclaimedRewards", async () => {
+  describe("Valid actions", async () => {
+    it("rewards do not exceed unclaimedRewards", async () => {
       helper.reset();
       const pool = trident.concentratedPools[0];
       const tickSpacing = (await pool.getImmutables())._tickSpacing;
@@ -117,7 +117,7 @@ describe("Concentrated Liquidity Pool Staker", function () {
 
       const rewardInfo = await trident.concentratedPoolStaker.getReward(mintA.tokenId, 0);
 
-      expect(rewardInfo.rewards).to.be.greaterThan(incentiveAmount);
+      expect(rewardInfo.rewards).to.be.lessThanOrEqual(incentiveAmount);
 
       const accuracy = 1_000_000_000;
       const ratio = rewardInfo.rewards.mul(accuracy).div(incentiveAmount);
@@ -128,7 +128,7 @@ describe("Concentrated Liquidity Pool Staker", function () {
 
       await expect(
         trident.concentratedPoolStaker.claimRewards(mintA.tokenId, [0], recipientA, false)
-      ).to.be.revertedWithPanic(PANIC_CODES.ARITHMETIC_UNDER_OR_OVERFLOW);
+      ).to.not.be.revertedWithPanic(PANIC_CODES.ARITHMETIC_UNDER_OR_OVERFLOW);
     });
   });
 });
