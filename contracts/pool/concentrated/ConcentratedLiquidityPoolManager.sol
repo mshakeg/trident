@@ -149,9 +149,6 @@ contract ConcentratedLiquidityPoolManager is IConcentratedLiquidityPoolManagerSt
 
         PositionFeesData memory positionFeesData = positionFees(tokenId);
 
-        uint256 feeGrowthInside0 = positionFeesData.feeGrowthInside0;
-        uint256 feeGrowthInside1 = positionFeesData.feeGrowthInside1;
-
         if (amount < position.liquidity) {
             (token0Amount, token1Amount, , ) = position.pool.burn(position.lower, position.upper, amount);
 
