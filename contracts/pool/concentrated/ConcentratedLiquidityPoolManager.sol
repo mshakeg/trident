@@ -142,6 +142,7 @@ contract ConcentratedLiquidityPoolManager is IConcentratedLiquidityPoolManagerSt
     ) external returns (uint256 token0Amount, uint256 token1Amount) {
         require(msg.sender == ownerOf(tokenId), "NOT_ID_OWNER");
 
+        // TODO: consider using storage instead of memory if results in gas reduction
         Position memory position = positions[tokenId];
 
         require(position.liquidity != 0, "NO_LIQUIDITY");
@@ -158,8 +159,8 @@ contract ConcentratedLiquidityPoolManager is IConcentratedLiquidityPoolManagerSt
             token0Amount += position.unclaimedFees0;
             token1Amount += position.unclaimedFees1;
 
-            position.unclaimedFees0 = 0;
-            position.unclaimedFees1 = 0;
+            positions[tokenId].unclaimedFees0 = 0;
+            positions[tokenId].unclaimedFees1 = 0;
         } else {
             amount = position.liquidity;
             (token0Amount, token1Amount, , ) = position.pool.burn(position.lower, position.upper, amount);
