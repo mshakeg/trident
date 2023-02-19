@@ -15,6 +15,8 @@ interface IConcentratedLiquidityPoolManagerStruct {
         uint32 latestAddition;
         uint256 feeGrowthInside0; /// @dev Per unit of liquidity.
         uint256 feeGrowthInside1;
+        uint256 unclaimedFees0;
+        uint256 unclaimedFees1;
     }
 }
 
