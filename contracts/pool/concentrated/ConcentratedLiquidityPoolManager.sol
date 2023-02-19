@@ -90,11 +90,12 @@ contract ConcentratedLiquidityPoolManager is IConcentratedLiquidityPoolManagerSt
         } else {
             // We increase liquidity for an existing NFT.
             _positionId = positionId;
-            PositionFeesData memory positionFeesData = positionFees(_positionId);
             Position storage position = positions[_positionId];
             require(address(position.pool) == address(pool), "POOL_MIS_MATCH");
             require(position.lower == lower && position.upper == upper, "RANGE_MIS_MATCH");
             require(ownerOf(positionId) == msg.sender, "NOT_ID_OWNER");
+
+            PositionFeesData memory positionFeesData = positionFees(_positionId);
 
             position.feeGrowthInside0 = positionFeesData.feeGrowthInside0;
             position.feeGrowthInside1 = positionFeesData.feeGrowthInside1;
