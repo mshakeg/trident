@@ -131,9 +131,9 @@ export class Trident {
     // high price feed
     prices.push(TWO_POW_96.mul(16));
 
-    const fees = [5, 30];
+    const fees = [5];
 
-    const tickSpacings = [1, 5, 60];
+    const tickSpacings = [1];
 
     function data(token0, token1, fee, price, tickSpacing) {
       return ethers.utils.defaultAbiCoder.encode(
