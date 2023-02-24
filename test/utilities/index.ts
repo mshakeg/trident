@@ -5,6 +5,7 @@ import { ethers } from "hardhat";
 import type { ERC20Mock } from "../../types";
 
 export * from "./address";
+export * from "./constants";
 export * from "./error";
 export * from "./expect";
 export * from "./math";

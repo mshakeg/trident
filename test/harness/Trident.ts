@@ -2,7 +2,7 @@ import { BigNumber } from "@ethersproject/bignumber";
 import { ContractFactory } from "@ethersproject/contracts";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 import { ethers } from "hardhat";
-import { getBigNumber, getFactories, randBetween, sortTokens } from "../utilities";
+import { getBigNumber, getFactories, randBetween, sortTokens, deployOverrides } from "../utilities";
 import {
   BentoBoxV1,
   ConcentratedLiquidityPool,
@@ -146,7 +146,8 @@ export class Trident {
       for (let k = 0; k < tickSpacings.length; k++) {
         await this.masterDeployer.deployPool(
           this.concentratedPoolFactory.address,
-          data(token0.address, token1.address, fees[j], prices[(j + k) % prices.length], tickSpacings[k])
+          data(token0.address, token1.address, fees[j], prices[(j + k) % prices.length], tickSpacings[k]),
+          deployOverrides
         );
       }
     }
@@ -166,10 +167,10 @@ export class Trident {
   }
 
   private async deployTokens(ERC20: ContractFactory) {
-    this.tokens = await Promise.all([
-      ERC20.deploy("TokenA", "TOK", this.tokenSupply),
-      ERC20.deploy("TokenB", "TOK", this.tokenSupply),
-    ] as Promise<ERC20Mock>[]);
+    const tokenA = (await ERC20.deploy("TokenA", "TOK", this.tokenSupply)) as ERC20Mock;
+    const tokenB = (await ERC20.deploy("TokenB", "TOK", this.tokenSupply)) as ERC20Mock;
+    this.tokens = [tokenA, tokenB];
+
     this.extraToken = (await ERC20.deploy("TokenC", "TOK", this.tokenSupply)) as ERC20Mock;
     this.tokenMap[this.tokens[0].address] = this.tokens[0];
     this.tokenMap[this.tokens[1].address] = this.tokens[1];
@@ -177,19 +178,21 @@ export class Trident {
   }
 
   private async deployBento(Bento: ContractFactory) {
-    this.bento = (await Bento.deploy(this.tokens[0].address)) as BentoBoxV1;
+    this.bento = (await Bento.deploy(this.tokens[0].address, deployOverrides)) as BentoBoxV1;
   }
 
   private async deployTridentPeriphery(Deployer: ContractFactory, TridentRouter: ContractFactory) {
     this.masterDeployer = (await Deployer.deploy(
       randBetween(1, 9999),
       this.accounts[1].address,
-      this.bento.address
+      this.bento.address,
+      deployOverrides
     )) as MasterDeployer;
     this.router = (await TridentRouter.deploy(
       this.bento.address,
       this.masterDeployer.address,
-      this.tokens[0].address
+      this.tokens[0].address,
+      deployOverrides
     )) as TridentRouter;
   }
 
@@ -202,17 +205,22 @@ export class Trident {
   ) {
     this.concentratedPoolManager = (await ConcentratedPoolManager.deploy(
       this.masterDeployer.address,
-      this.tokens[0].address
+      this.tokens[0].address,
+      deployOverrides
     )) as ConcentratedLiquidityPoolManager;
     this.concentratedPoolStaker = (await ConcentratedPoolStaker.deploy(
-      this.concentratedPoolManager.address
+      this.concentratedPoolManager.address,
+      deployOverrides
     )) as ConcentratedLiquidityPoolStaker;
     this.concentratedPoolFactory = (await ConcentratedPoolFactory.deploy(
-      this.masterDeployer.address
+      this.masterDeployer.address,
+      deployOverrides
     )) as ConcentratedLiquidityPoolFactory;
     // for testing
-    this.concentratedPoolHelper = (await ConcentratedPoolHelper.deploy()) as ConcentratedLiquidityPoolHelper;
-    this.tickMath = (await TickMath.deploy()) as TickMathMock;
+    this.concentratedPoolHelper = (await ConcentratedPoolHelper.deploy(
+      deployOverrides
+    )) as ConcentratedLiquidityPoolHelper;
+    this.tickMath = (await TickMath.deploy(deployOverrides)) as TickMathMock;
   }
 
   private async addFactoriesToWhitelist() {
@@ -220,34 +228,34 @@ export class Trident {
   }
 
   private async prepareBento() {
-    await Promise.all([
-      this.tokens[0].approve(this.bento.address, this.tokenSupply),
-      this.tokens[1].approve(this.bento.address, this.tokenSupply),
-      this.extraToken.approve(this.bento.address, this.tokenSupply),
-    ]);
-    await Promise.all([
-      this.bento.deposit(
-        this.tokens[0].address,
-        this.accounts[0].address,
-        this.accounts[0].address,
-        this.tokenSupply.div(2),
-        0
-      ),
-      this.bento.deposit(
-        this.tokens[1].address,
-        this.accounts[0].address,
-        this.accounts[0].address,
-        this.tokenSupply.div(2),
-        0
-      ),
-      this.bento.deposit(
-        this.extraToken.address,
-        this.accounts[0].address,
-        this.accounts[0].address,
-        this.tokenSupply.div(2),
-        0
-      ),
-    ]);
+    await this.tokens[0].approve(this.bento.address, this.tokenSupply);
+    await this.tokens[1].approve(this.bento.address, this.tokenSupply);
+    await this.extraToken.approve(this.bento.address, this.tokenSupply);
+
+    await this.bento.deposit(
+      this.tokens[0].address,
+      this.accounts[0].address,
+      this.accounts[0].address,
+      this.tokenSupply.div(2),
+      0
+    );
+
+    await this.bento.deposit(
+      this.tokens[1].address,
+      this.accounts[0].address,
+      this.accounts[0].address,
+      this.tokenSupply.div(2),
+      0
+    );
+
+    await this.bento.deposit(
+      this.extraToken.address,
+      this.accounts[0].address,
+      this.accounts[0].address,
+      this.tokenSupply.div(2),
+      0
+    );
+
     await this.bento.whitelistMasterContract(this.router.address, true);
     await this.bento.whitelistMasterContract(this.concentratedPoolManager.address, true);
     await this.bento.whitelistMasterContract(this.concentratedPoolStaker.address, true);
