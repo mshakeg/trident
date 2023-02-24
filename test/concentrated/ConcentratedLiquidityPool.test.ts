@@ -18,29 +18,29 @@ import { getBigNumber, customError } from "../utilities";
 import { Trident } from "../harness/Trident";
 
 describe("Concentrated Liquidity Product Pool", function () {
-  let _snapshotId: string;
-  let snapshotId: string;
+  // let _snapshotId: string;
+  // let snapshotId: string;
   let trident: Trident;
   let defaultAddress: string;
   const helper = new LinkedListHelper(-887272);
   const step = 10800; // 2^5 * 3^2 * 5^2 (nicely divisible number)
 
-  before(async () => {
-    _snapshotId = await ethers.provider.send("evm_snapshot", []);
+  beforeEach(async () => {
+    // _snapshotId = await ethers.provider.send("evm_snapshot", []);
     trident = await Trident.Instance.init();
     defaultAddress = trident.accounts[0].address;
-    snapshotId = await ethers.provider.send("evm_snapshot", []);
+    // snapshotId = await ethers.provider.send("evm_snapshot", []);
   });
 
-  afterEach(async () => {
-    await network.provider.send("evm_revert", [snapshotId]);
-    snapshotId = await ethers.provider.send("evm_snapshot", []);
-  });
+  // afterEach(async () => {
+  //   await network.provider.send("evm_revert", [snapshotId]);
+  //   snapshotId = await ethers.provider.send("evm_snapshot", []);
+  // });
 
-  after(async () => {
-    await network.provider.send("evm_revert", [_snapshotId]);
-    _snapshotId = await ethers.provider.send("evm_snapshot", []);
-  });
+  // after(async () => {
+  //   await network.provider.send("evm_revert", [_snapshotId]);
+  //   _snapshotId = await ethers.provider.send("evm_snapshot", []);
+  // });
 
   describe("Valid actions", async () => {
     it("Should mint liquidity (in / out of range, native / from bento, reusing ticks / new ticks)", async () => {

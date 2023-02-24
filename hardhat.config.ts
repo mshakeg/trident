@@ -98,6 +98,7 @@ const config: HardhatUserConfig = {
     h_local: {
       url: "http://127.0.0.1:7546",
       chainId: 298,
+      timeout: 60_000,
       accounts: [
         // private keys
         "0x105d050185ccb907fba04dd92d8de9e32c18305e097ab41dadda21489a211524",
@@ -357,7 +358,7 @@ const config: HardhatUserConfig = {
         settings: {
           optimizer: {
             enabled: true,
-            runs: 999999,
+            runs: 1000,
           },
         },
       },
@@ -366,7 +367,7 @@ const config: HardhatUserConfig = {
         settings: {
           optimizer: {
             enabled: true,
-            runs: 999999,
+            runs: 1000,
           },
         },
       },
@@ -375,7 +376,7 @@ const config: HardhatUserConfig = {
         settings: {
           optimizer: {
             enabled: true,
-            runs: 999999,
+            runs: 1000,
           },
         },
       },
@@ -406,7 +407,7 @@ const config: HardhatUserConfig = {
     },
   },
   mocha: {
-    timeout: 300000,
+    timeout: 600_000, // 10 mins before test a callback timeouts
     //bail: true,
   },
 };

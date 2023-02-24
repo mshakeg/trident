@@ -16,19 +16,19 @@ let trident: Trident;
 let defaultAddress: string;
 const helper = new LinkedListHelper(-887272);
 const step = 10800;
-let snapshotId: string;
+// let snapshotId: string;
 
 describe("Concentrated Pool Routing", async () => {
-  before(async () => {
+  beforeEach(async () => {
     trident = await Trident.Instance.init();
     defaultAddress = trident.accounts[0].address;
-    snapshotId = await ethers.provider.send("evm_snapshot", []);
+    // snapshotId = await ethers.provider.send("evm_snapshot", []);
   });
 
-  afterEach(async () => {
-    await network.provider.send("evm_revert", [snapshotId]);
-    snapshotId = await ethers.provider.send("evm_snapshot", []);
-  });
+  // afterEach(async () => {
+  //   await network.provider.send("evm_revert", [snapshotId]);
+  //   snapshotId = await ethers.provider.send("evm_snapshot", []);
+  // });
 
   it("swap without crossing", async () => {
     for (const pool of trident.concentratedPools) {
