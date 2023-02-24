@@ -3,7 +3,7 @@ import { ContractTransaction } from "@ethersproject/contracts";
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { ConcentratedLiquidityPool } from "../../types";
-import { divRoundingUp, expectAlmostEqual, ZERO } from "../utilities";
+import { defaultOverrides, divRoundingUp, expectAlmostEqual, ZERO } from "../utilities";
 import { Trident } from "./Trident";
 
 export const TWO_POW_96 = BigNumber.from(2).pow(96);
@@ -18,7 +18,7 @@ export async function collectProtocolFee(params: { pool: ConcentratedLiquidityPo
   const oldReserve0 = oldReserve._reserve0;
   const oldReserve1 = oldReserve._reserve1;
 
-  await pool.collectProtocolFee();
+  await pool.collectProtocolFee(defaultOverrides);
 
   const tokenProtocolFee = await pool.getTokenProtocolFees();
   const token0ProtocolFee = tokenProtocolFee._token0ProtocolFee;
@@ -60,7 +60,7 @@ export async function collectFees(params: {
   const tokens = [immutables._token0, immutables._token1];
   const oldUserBalances = await Trident.Instance.getTokenBalance(tokens, recipient, false);
 
-  await Trident.Instance.concentratedPoolManager.collect(tokenId, recipient, unwrapBento);
+  await Trident.Instance.concentratedPoolManager.collect(tokenId, recipient, unwrapBento, defaultOverrides);
 
   const nwePosition = await Trident.Instance.concentratedPoolManager.positions(tokenId);
   const newUserBalances = await Trident.Instance.getTokenBalance(tokens, recipient, false);
@@ -224,7 +224,7 @@ export async function swapViaRouter(params: {
     data: swapData,
   };
 
-  const tx = await Trident.Instance.router.exactInputSingle(routerData);
+  const tx = await Trident.Instance.router.exactInputSingle(routerData, defaultOverrides);
   const newSplData = await pool.getSecondsGrowthAndLastObservation();
   const block = await ethers.provider.getBlock(tx.blockNumber as number);
   const timeDiff = block.timestamp - oldSplData._lastObservation;
@@ -320,7 +320,7 @@ export async function removeLiquidityViaManager(params: {
   const poolPositionLiquidity = (await pool.positions(manager.address, position.lower, position.upper)).liquidity;
   const fees0 = feeGrowthInside0.sub(position.feeGrowthInside0).mul(position.liquidity).div(TWO_POW_128);
   const fees1 = feeGrowthInside1.sub(position.feeGrowthInside1).mul(position.liquidity).div(TWO_POW_128);
-  await manager.burn(tokenId, liquidityAmount, recipient, unwrapBento, 0, 0);
+  await manager.burn(tokenId, liquidityAmount, recipient, unwrapBento, 0, 0, defaultOverrides);
 
   const [newPoolAddress, newUserLiquidity, newLower, newUpper, newFeeGrowthInside0, newFeeGrowthInside1] =
     await manager.positions(tokenId);
@@ -491,7 +491,8 @@ export async function addLiquidityViaManager(params: {
     amount1Desired,
     native,
     liquidity,
-    positionId || 0
+    positionId || 0,
+    defaultOverrides
   );
 
   const newLiquidity = await pool.liquidity();
