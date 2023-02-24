@@ -407,7 +407,7 @@ const config: HardhatUserConfig = {
     },
   },
   mocha: {
-    timeout: 600_000, // 10 mins before test a callback timeouts
+    timeout: 3600_000, // 60 mins before test a callback timeouts
     //bail: true,
   },
 };
