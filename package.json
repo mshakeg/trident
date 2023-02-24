@@ -28,6 +28,8 @@
   "scripts": {
     "build": "TS_NODE_TRANSPILE_ONLY=1 hardhat compile",
     "console": "hardhat console",
+    "hedera-start": "npx @hashgraph/hedera-local start --limits=false --dev=true --turbo=true",
+    "hedera-stop": "npx @hashgraph/hedera-local stop",
     "mainnet:deploy": "hardhat --network mainnet deploy",
     "mainnet:verify": "hardhat --network mainnet etherscan-verify --license GPL-3.0 --force-license",
     "mainnet:export": "hardhat --network mainnet export",
@@ -85,6 +87,7 @@
     "@codechecks/client": "^0.1.12",
     "@ethersproject/address": "^5.0.0",
     "@ethersproject/solidity": "^5.0.0",
+    "@hashgraph/hedera-local": "^2.5.1",
     "@nomicfoundation/hardhat-chai-matchers": "^1.0.4",
     "@nomiclabs/hardhat-ethers": "npm:hardhat-deploy-ethers",
     "@nomiclabs/hardhat-etherscan": "^3.1.0",
